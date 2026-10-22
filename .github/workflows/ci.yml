@@ -28,3 +28,5 @@ jobs:
         with:
           python-version: "3.11"
       - run: python -m compileall -q backend
+      - name: Validate requirements.txt
+        run: pip install --dry-run --no-deps -r backend/requirements.txt
