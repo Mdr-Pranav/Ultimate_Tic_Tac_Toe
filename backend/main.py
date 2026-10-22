@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from alpha_zero import AlphaZero, AlphaZeroNet
+from alpha_zero import AlphaZero, AlphaZeroNet, UltimateTicTacToe, PLAYER_O
 import numpy as np
 import json
 import random
@@ -133,24 +133,33 @@ game_state = {
     "game_over": False
 }
 
-# Load AI models
+# Load AI models — each in its own try, so one failing model can't disable the other.
+# If a model can't be loaded, that difficulty falls back to random moves.
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+hard_model = None
+medium_model = None
+
+# Hard: AlphaZero-style network + MCTS. This checkpoint matches AlphaZeroNet;
+# ultimate_tic_tac_toe_ppo_final.pth is the PPONetwork from ppo_train.py and does not fit it.
 try:
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    # Load hard difficulty model
-    hard_model = AlphaZero(device=device)
-    hard_model_path = 'ultimate_tic_tac_toe_ppo_final.pth'
+    hard_model_path = 'ultimate_tic_tac_toe_model.pth'
     if os.path.exists(hard_model_path):
+        hard_model = AlphaZero(device=device)
         state_dict = torch.load(hard_model_path, map_location=device)
         hard_model.model.load_state_dict(state_dict)
+        hard_model.model.eval()
         print(f"Hard difficulty model loaded successfully on {device}")
     else:
-        print("No hard difficulty model found. Using untrained model.")
-    
-    # Load medium difficulty model with improved architecture
-    medium_model = ImprovedDQN().to(device)
+        print("No hard difficulty model found — Hard will play random moves.")
+except Exception as e:
+    hard_model = None
+    print(f"Error loading hard model — Hard will play random moves: {e}")
+
+# Medium: improved DQN
+try:
     medium_model_path = 'final_improved_model.pt'
     if os.path.exists(medium_model_path):
+        medium_model = ImprovedDQN().to(device)
         checkpoint = torch.load(medium_model_path, map_location=device)
         if 'policy_net' in checkpoint:
             # Load from training checkpoint format
@@ -161,12 +170,10 @@ try:
         medium_model.eval()  # Set to evaluation mode
         print(f"Medium difficulty model loaded successfully on {device}")
     else:
-        print("No medium difficulty model found.")
-        medium_model = None
+        print("No medium difficulty model found — Medium will play random moves.")
 except Exception as e:
-    print(f"Error loading AI models: {str(e)}")
-    hard_model = None
     medium_model = None
+    print(f"Error loading medium model — Medium will play random moves: {e}")
 
 @app.get("/")
 async def root():
@@ -258,10 +265,11 @@ async def make_move(request: Request):
                 if valid_moves:
                     if difficulty == "hard" and hard_model:
                         try:
-                            ai_move = hard_model.mcts(game_state)
-                            if not ai_move or ai_move not in valid_moves:
+                            ai_move = hard_model.mcts(to_alpha_zero_game(game_state))
+                            if not ai_move or tuple(ai_move) not in [tuple(m) for m in valid_moves]:
                                 ai_move = random.choice(valid_moves)
-                        except:
+                        except Exception as e:
+                            print(f"Hard model error: {str(e)}")
                             ai_move = random.choice(valid_moves)
                     elif difficulty == "medium" and medium_model:
                         try:
@@ -271,11 +279,14 @@ async def make_move(request: Request):
                                 policy, _ = medium_model(board_tensor)
                                 # Get move probabilities and mask invalid moves
                                 move_probs = F.softmax(policy, dim=1).squeeze()
+                                # The policy has 81 outputs; training encodes a move as row * 9 + col
+                                action_ids = [r * 9 + c for r, c in valid_moves]
                                 valid_move_mask = torch.zeros_like(move_probs)
-                                valid_move_mask[valid_moves] = 1
+                                valid_move_mask[action_ids] = 1
                                 masked_probs = move_probs * valid_move_mask
                                 if masked_probs.sum() > 0:
-                                    ai_move = valid_moves[torch.argmax(masked_probs).item()]
+                                    best = torch.argmax(masked_probs).item()
+                                    ai_move = (best // 9, best % 9)
                                 else:
                                     ai_move = random.choice(valid_moves)
                         except Exception as e:
@@ -371,6 +382,19 @@ def is_sub_board_playable(game_state, sub_row, sub_col):
             if game_state["board"][r][c] == 0:
                 return True
     return False
+
+def to_alpha_zero_game(state):
+    """mcts() works on alpha_zero.UltimateTicTacToe objects, not the API's game_state dict."""
+    game = UltimateTicTacToe()
+    game.board = [row[:] for row in state["board"]]
+    game.meta_board = [row[:] for row in state["meta_board"]]
+    game.current_player = PLAYER_O  # the bot always plays O (-1)
+    game.active_sub_row = state["active_sub_row"]
+    game.active_sub_col = state["active_sub_col"]
+    game.game_over = state["game_over"]
+    game.winner = state["winner"]
+    game.last_move = state["last_move"]
+    return game
 
 def get_valid_moves(game_state):
     valid_moves = []

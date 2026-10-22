@@ -18,9 +18,11 @@ Play **Ultimate Tic-Tac-Toe** — nine tic-tac-toe boards inside one big board �
 |---|---|---|
 | **Easy** | Uniformly random legal move | — |
 | **Medium** | Deep Q-Network with residual blocks and a self-attention block, trained with prioritized experience replay | `backend/final_improved_model.pt` (`improved_training.py`) |
-| **Hard** | AlphaZero-style policy + value network guiding **Monte Carlo Tree Search**, trained with PPO self-play | `backend/ultimate_tic_tac_toe_ppo_final.pth` (`alpha_zero.py`, `ppo_train.py`) |
+| **Hard** | AlphaZero-style policy + value network guiding **Monte Carlo Tree Search** | `backend/ultimate_tic_tac_toe_model.pth` (`alpha_zero.py`) |
 
-Every model output is masked to legal moves, so the AI never plays an illegal move; if a model fails to load, that level falls back to random play.
+Every model output is masked to legal moves, so the AI never plays an illegal move; if a model fails to load, that level falls back to random play (logged at startup).
+
+`ppo_train.py` trains a separate PPO network (`ultimate_tic_tac_toe_ppo_final.pth`); it isn't used by the game yet.
 
 ## Tech stack
 
@@ -72,14 +74,14 @@ Ultimate_Tic_Tac_Toe/
 │   ├── main.py              # FastAPI server, game rules, AI move selection
 │   ├── alpha_zero.py        # AlphaZero-style network + MCTS (Hard)
 │   ├── improved_training.py # DQN training (Medium)
-│   ├── ppo_train.py         # PPO self-play training (Hard)
+│   ├── ppo_train.py         # PPO self-play training (experimental, not used in-game)
 │   └── *.pt / *.pth         # Trained model weights
 └── package.json
 ```
 
 ## Retraining the models
 
-`improved_training.py` and `ppo_train.py` train the Medium and Hard agents from scratch. `ppo_train.py` additionally needs `wandb` (`pip install wandb`) and logs runs to Weights & Biases.
+`improved_training.py` trains the Medium agent; `alpha_zero.py` contains the Hard agent's network and MCTS; `ppo_train.py` trains an experimental PPO agent. `ppo_train.py` additionally needs `wandb` (`pip install wandb`) and logs runs to Weights & Biases.
 
 ## License
 
