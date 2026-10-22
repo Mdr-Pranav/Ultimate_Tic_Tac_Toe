@@ -1,73 +1,84 @@
-# Welcome to your Lovable project
+# Ultimate Tic-Tac-Toe vs. AI
 
-## Project info
+Play **Ultimate Tic-Tac-Toe** — nine tic-tac-toe boards inside one big board — against an AI opponent with three difficulty levels, each backed by a different strategy, from random play up to a deep reinforcement-learning agent with Monte Carlo Tree Search.
 
-**URL**: https://lovable.dev/projects/004cf7d2-37a3-49a2-8133-a3214a8f38ed
+## How to play
 
-## How can I edit this code?
+- The board is a 3×3 grid of small 3×3 boards.
+- Win a small board by getting three in a row inside it.
+- **Where you play decides where your opponent must play next:** if you mark the top-right cell of a small board, your opponent's next move must be in the top-right small board.
+- If you're sent to a board that's already won or full, you may play anywhere.
+- Win three small boards in a row to win the game.
 
-There are several ways of editing your application.
+## AI difficulty levels
 
-**Use Lovable**
+| Level | Strategy | Model |
+|---|---|---|
+| **Easy** | Uniformly random legal move | — |
+| **Medium** | Deep Q-Network with residual blocks and a self-attention block, trained with prioritized experience replay | `backend/final_improved_model.pt` (`improved_training.py`) |
+| **Hard** | AlphaZero-style policy + value network guiding **Monte Carlo Tree Search**, trained with PPO self-play | `backend/ultimate_tic_tac_toe_ppo_final.pth` (`alpha_zero.py`, `ppo_train.py`) |
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/004cf7d2-37a3-49a2-8133-a3214a8f38ed) and start prompting.
+Every model output is masked to legal moves, so the AI never plays an illegal move; if a model fails to load, that level falls back to random play.
 
-Changes made via Lovable will be committed automatically to this repo.
+## Tech stack
 
-**Use your preferred IDE**
+| Layer | Technology |
+|---|---|
+| Frontend | React, TypeScript, Vite, Tailwind CSS, shadcn/ui |
+| Backend | Python, FastAPI, Uvicorn |
+| AI | PyTorch (DQN, AlphaZero-style network + MCTS, PPO) |
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Running locally
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+**Prerequisites:** Node.js 18+, Python 3.10+
 
-Follow these steps:
+### 1. Backend (AI server on port 8000)
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+```bash
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python run.py
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Run it from inside `backend/` — the model files are loaded from the current directory.
 
-# Step 3: Install the necessary dependencies.
-npm i
+### 2. Frontend (port 8080)
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Then open the URL Vite prints and pick a difficulty.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## API
 
-**Use GitHub Codespaces**
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/game-state` | Current board state |
+| POST | `/make-move` | Play a move (`difficulty`: `easy` \| `medium` \| `hard`); returns the AI's reply |
+| POST | `/reset` | Start a new game |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project structure
 
-## What technologies are used for this project?
+```
+Ultimate_Tic_Tac_Toe/
+├── src/                     # React + TypeScript frontend
+│   └── pages/GameBoard.tsx  # Game UI and API calls
+├── backend/
+│   ├── main.py              # FastAPI server, game rules, AI move selection
+│   ├── alpha_zero.py        # AlphaZero-style network + MCTS (Hard)
+│   ├── improved_training.py # DQN training (Medium)
+│   ├── ppo_train.py         # PPO self-play training (Hard)
+│   └── *.pt / *.pth         # Trained model weights
+└── package.json
+```
 
-This project is built with:
+## Retraining the models
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+`improved_training.py` and `ppo_train.py` train the Medium and Hard agents from scratch. `ppo_train.py` additionally needs `wandb` (`pip install wandb`) and logs runs to Weights & Biases.
 
-## How can I deploy this project?
+## License
 
-Simply open [Lovable](https://lovable.dev/projects/004cf7d2-37a3-49a2-8133-a3214a8f38ed) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+[MIT](LICENSE)
