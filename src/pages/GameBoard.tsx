@@ -14,6 +14,16 @@ import FloatingSpheres from "@/components/FloatingSpheres";
 import Confetti from "react-confetti";
 import "../styles/game.css";
 
+// Shape of the game state returned by the FastAPI backend (backend/main.py)
+interface GameStateResponse {
+  board: number[][];
+  meta_board: number[][];
+  current_player: number;
+  active_sub_row: number | null;
+  active_sub_col: number | null;
+  winner: number | null;
+}
+
 const GameBoard = () => {
   const navigate = useNavigate();
   const [currentPlayer, setCurrentPlayer] = useState<"X" | "O">("X");
@@ -37,7 +47,7 @@ const GameBoard = () => {
   });
 
   const updateGameStateFromResponse = (
-    data: any,
+    data: GameStateResponse,
     isPlayerMove: boolean = false
   ) => {
     // Convert the 1D board to our 9x9 format

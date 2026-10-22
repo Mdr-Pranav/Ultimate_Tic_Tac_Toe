@@ -1,5 +1,7 @@
 # Ultimate Tic-Tac-Toe vs. AI
 
+[![CI](https://github.com/Mdr-Pranav/Ultimate_Tic_Tac_Toe/actions/workflows/ci.yml/badge.svg)](https://github.com/Mdr-Pranav/Ultimate_Tic_Tac_Toe/actions/workflows/ci.yml)
+
 Play **Ultimate Tic-Tac-Toe** — nine tic-tac-toe boards inside one big board — against an AI opponent with three difficulty levels, each backed by a different strategy, from random play up to a deep reinforcement-learning agent with Monte Carlo Tree Search.
 
 ## How to play
